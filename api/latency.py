@@ -2,14 +2,15 @@ import json
 import numpy as np
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
 from pathlib import Path
 
 app = FastAPI()
 
-# ✅ Enable CORS (allow all origins, methods, headers)
+# ✅ Enable CORS globally
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # you can replace "*" with specific domains if needed
+    allow_origins=["*"],   # change "*" to your frontend domain if you want to restrict
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -19,6 +20,18 @@ app.add_middleware(
 DATA_PATH = Path(__file__).parent.parent / "q-vercel-latency.json"
 with open(DATA_PATH, "r") as f:
     telemetry = json.load(f)
+
+
+@app.options("/api/latency")
+async def options_latency():
+    """Handle preflight OPTIONS request for browsers"""
+    return Response(
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*"
+        }
+    )
 
 
 @app.post("/api/latency")
@@ -50,4 +63,8 @@ async def get_latency_metrics(request: Request):
             "breaches": breaches,
         }
 
-    return response
+    # ✅ Explicitly include CORS header in response
+    return JSONResponse(
+        content=response,
+        headers={"Access-Control-Allow-Origin": "*"}
+    )
