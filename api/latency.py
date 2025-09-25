@@ -2,19 +2,23 @@ import json
 import numpy as np
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
-from fastapi.middleware.cors import CORSMiddleware  # Add this import
+from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from starlette.middleware.base import BaseHTTPMiddleware
 
 app = FastAPI()
 
-# Add FastAPI's built-in CORS middleware
+# Remove any existing CORS middleware and add this fresh configuration
+origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 
 # Load telemetry data
