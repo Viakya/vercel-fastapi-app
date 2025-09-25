@@ -1,37 +1,37 @@
 import json
 import numpy as np
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pathlib import Path
+from starlette.middleware.base import BaseHTTPMiddleware
 
 app = FastAPI()
 
-# ✅ Enable CORS globally
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],   # change "*" to your frontend domain if you want to restrict
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ✅ Custom middleware to enforce CORS on all responses
+class CustomCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        if request.method == "OPTIONS":
+            return Response(
+                status_code=200,
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "*"
+                }
+            )
+        response = await call_next(request)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+
+# Add middleware
+app.add_middleware(CustomCORSMiddleware)
 
 # Load telemetry data
 DATA_PATH = Path(__file__).parent.parent / "q-vercel-latency.json"
 with open(DATA_PATH, "r") as f:
     telemetry = json.load(f)
-
-
-@app.options("/api/latency")
-async def options_latency():
-    """Handle preflight OPTIONS request for browsers"""
-    return Response(
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "*"
-        }
-    )
 
 
 @app.post("/api/latency")
@@ -63,8 +63,4 @@ async def get_latency_metrics(request: Request):
             "breaches": breaches,
         }
 
-    # ✅ Explicitly include CORS header in response
-    return JSONResponse(
-        content=response,
-        headers={"Access-Control-Allow-Origin": "*"}
-    )
+    return JSONResponse(content=response)
