@@ -1,6 +1,6 @@
 import json
 import numpy as np
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
@@ -29,31 +29,45 @@ with open(DATA_PATH, "r") as f:
 
 @app.post("/api/latency")
 async def get_latency_metrics(request: Request):
-    body = await request.json()
-    regions = body.get("regions", [])
-    threshold_ms = body.get("threshold_ms", 180)
+    try:
+        body = await request.json()
+        regions = body.get("regions")
 
-    response = {}
+        if not regions or not isinstance(regions, (list, dict)):
+            raise HTTPException(
+                status_code=400,
+                detail="Request must include a 'regions' array or object"
+            )
 
-    for region in regions:
-        region_data = [r for r in telemetry if r["region"] == region]
+        threshold_ms = body.get("threshold_ms", 180)
 
-        if not region_data:
-            continue
+        response = {}
 
-        latencies = [r["latency_ms"] for r in region_data]
-        uptimes = [r["uptime_pct"] for r in region_data]
+        for region in regions:
+            region_data = [r for r in telemetry if r["region"] == region]
 
-        avg_latency = float(np.mean(latencies))
-        p95_latency = float(np.percentile(latencies, 95))
-        avg_uptime = float(np.mean(uptimes))
-        breaches = int(sum(l > threshold_ms for l in latencies))
+            if not region_data:
+                continue
 
-        response[region] = {
-            "avg_latency": round(avg_latency, 2),
-            "p95_latency": round(p95_latency, 2),
-            "avg_uptime": round(avg_uptime, 2),
-            "breaches": breaches,
-        }
+            latencies = [r["latency_ms"] for r in region_data]
+            uptimes = [r["uptime_pct"] for r in region_data]
 
-    return JSONResponse(content=response)
+            avg_latency = float(np.mean(latencies))
+            p95_latency = float(np.percentile(latencies, 95))
+            avg_uptime = float(np.mean(uptimes))
+            breaches = int(sum(l > threshold_ms for l in latencies))
+
+            response[region] = {
+                "avg_latency": round(avg_latency, 2),
+                "p95_latency": round(p95_latency, 2),
+                "avg_uptime": round(avg_uptime, 2),
+                "breaches": breaches,
+            }
+
+        return JSONResponse(content=response)
+
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid JSON in request body"
+        )
