@@ -2,31 +2,20 @@ import json
 import numpy as np
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
+from fastapi.middleware.cors import CORSMiddleware  # Add this import
 from pathlib import Path
 from starlette.middleware.base import BaseHTTPMiddleware
 
 app = FastAPI()
 
-# ✅ Custom middleware to enforce CORS on all responses
-class CustomCORSMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        if request.method == "OPTIONS":
-            return Response(
-                status_code=200,
-                headers={
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "POST, OPTIONS",
-                    "Access-Control-Allow-Headers": "*"
-                }
-            )
-        response = await call_next(request)
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "*"
-        return response
-
-# Add middleware
-app.add_middleware(CustomCORSMiddleware)
+# Add FastAPI's built-in CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Load telemetry data
 DATA_PATH = Path(__file__).parent.parent / "q-vercel-latency.json"
