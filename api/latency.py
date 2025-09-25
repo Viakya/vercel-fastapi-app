@@ -6,10 +6,11 @@ from pathlib import Path
 
 app = FastAPI()
 
-# Enable CORS for POST requests
+# ✅ Enable CORS (allow all origins, methods, headers)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],   # you can replace "*" with specific domains if needed
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
